@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getStorage } from "firebase/storage";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -10,11 +10,32 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+if (import.meta.env.DEV) {
+  const missingConfigFields = Object.entries(firebaseConfig)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  console.log("Firebase config loaded:", {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    storageBucket: firebaseConfig.storageBucket,
+    appId: firebaseConfig.appId,
+  });
+  if (missingConfigFields.length > 0) {
+    console.warn("Firebase config missing values:", missingConfigFields);
+  }
+}
 
 const app = initializeApp(firebaseConfig);
 
+if (import.meta.env.DEV) {
+  console.log("Firebase app name:", app.name);
+  console.log("Firebase app options:", app.options);
+}
+
 export const auth = getAuth(app);
 export const analytics = getAnalytics(app);
-export const storage = getStorage(app);
+export const db = getFirestore(app, "brewinsights");
