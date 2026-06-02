@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+// linea encargada de inicializar Firestore con cache persistente
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore"
 
 const firebaseConfig = {
@@ -37,7 +38,7 @@ if (import.meta.env.DEV) {
   console.log("Firebase app options:", app.options);
 }
 
-export const auth = getAuth(app);
+
 export const analytics = getAnalytics(app);
 
 //inicializamos Firestore con cache persistente para mejorar el rendimiento y reducir costos de lectura
@@ -47,3 +48,4 @@ export const db = initializeFirestore(app, {
   })
 }, "brewinsights");
 
+export const auth = getAuth(app);

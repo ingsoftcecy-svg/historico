@@ -6,13 +6,14 @@ import { useToast } from "@/hooks/use_toast";
 import { console } from "inspector/promises";
 
 export function useFirestoreHistory() {
-  const { data, setData, setColdBlockData } = useData();
+  const { data, setData,coldBlockData, setColdBlockData } = useData();
   const { toast } = useToast();
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const fetchHistory = async (target: 'hot' | 'cold' = 'hot') => {
     // Si ya hay datos en memoria, evitamos hacer una petición innecesaria a Firebase
     if (target === 'hot' && data && data.length > 0) return;
+    if (target === 'cold' && coldBlockData && coldBlockData.length > 0) return;
 
     setLoadingHistory(true);
     const collectionName = target === 'cold' ? 'cold_block_records' : 'hot_block_records';
@@ -33,9 +34,8 @@ export function useFirestoreHistory() {
         querySnapshot = await getDocsFromCache(q);
         console.log(`[Firestore] Datos obtenidos de la cache para ${collectionName}, total registros: ${querySnapshot.size}`);
         if (querySnapshot.empty) {
-          throw new Error("No se encontraron datos en la cache, intentando obtener del servidor...");
+          throw new Error("Cache vacía");
         }
-        console.log(`[Firestore] Datos obtenidos de la cache para ${collectionName}, total registros: ${querySnapshot.size}`);
       }catch (cacheError) {
         console.log(`Firestore: Cache vació o inválido,trayendo ${collectionName} desde el servidor...`);
         querySnapshot = await getDocsFromServer(q);
@@ -59,10 +59,12 @@ export function useFirestoreHistory() {
       }
     } catch (error) {
       console.error("Error al leer de Firestore:", error);
+      const isQuotaError = error?.code === 'resource-exhausted' || error?.message?.includes('quota');
       toast({
         variant: "destructive",
-        title: "Error de sincronización",
-        description: "No se pudo recuperar el histórico desde Firebase.",
+        title: isQuotaError
+          ? "Se ha agotado la cuota gratuita diaria de Firebase. Los datos del servidor volverán a estar disponibles mañana."
+          : "No se pudo recuperar el histórico desde Firebase.",
       });
     } finally {
       setLoadingHistory(false);

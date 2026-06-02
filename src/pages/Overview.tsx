@@ -121,7 +121,7 @@ export default function Overview() {
             />
           </div>
           
-          {/* Botón de Cancelar que te regresa al panel */}
+          {/*Cuando se da el click se manda a la misma pagina que teniamos precargada*/}
           <Button 
             variant="outline" 
             onClick={() => window.location.reload()} 
