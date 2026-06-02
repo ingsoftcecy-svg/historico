@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -38,4 +39,11 @@ if (import.meta.env.DEV) {
 
 export const auth = getAuth(app);
 export const analytics = getAnalytics(app);
-export const db = getFirestore(app, "brewinsights");
+
+//inicializamos Firestore con cache persistente para mejorar el rendimiento y reducir costos de lectura
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager() // Soporte para múltiples pestañas abiertas
+  })
+}, "brewinsights");
+

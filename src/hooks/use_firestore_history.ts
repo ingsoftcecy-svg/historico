@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useData } from "@/context/data_context";
-import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocsFromCache, getDocsFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use_toast";
+import { console } from "inspector/promises";
 
 export function useFirestoreHistory() {
   const { data, setData, setColdBlockData } = useData();
@@ -26,7 +27,19 @@ export function useFirestoreHistory() {
         limit(2000) // Límite prudente para cuidar tus lecturas diarias gratuitas
       );
 
-      const querySnapshot = await getDocs(q);
+      let querySnapshot;
+      // Primero intentamos obtener los datos de la cache local
+      try{
+        querySnapshot = await getDocsFromCache(q);
+        console.log(`[Firestore] Datos obtenidos de la cache para ${collectionName}, total registros: ${querySnapshot.size}`);
+        if (querySnapshot.empty) {
+          throw new Error("No se encontraron datos en la cache, intentando obtener del servidor...");
+        }
+        console.log(`[Firestore] Datos obtenidos de la cache para ${collectionName}, total registros: ${querySnapshot.size}`);
+      }catch (cacheError) {
+        console.log(`Firestore: Cache vació o inválido,trayendo ${collectionName} desde el servidor...`);
+        querySnapshot = await getDocsFromServer(q);
+      }
       const records = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),

@@ -110,12 +110,26 @@ export default function Overview() {
   if (data.length === 0) {
     return (
       <DashboardLayout>
-        <EmptyStateUploader 
-          loading={loading} 
-          uploadProgress={uploadProgress} 
-          onFilesSelected={processFiles} 
-          maxFiles={maxFiles}
-        />
+        <div className="flex flex-col items-center gap-4 max-w-4xl mx-auto mt-8 w-full">
+          {/* Tu zona de arrastrar archivos intacta */}
+          <div className="w-full">
+            <EmptyStateUploader 
+              loading={loading} 
+              uploadProgress={uploadProgress} 
+              onFilesSelected={processFiles} 
+              maxFiles={maxFiles}
+            />
+          </div>
+          
+          {/* Botón de Cancelar que te regresa al panel */}
+          <Button 
+            variant="outline" 
+            onClick={() => window.location.reload()} 
+            className="px-6 border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm transition-all"
+          >
+            Cancelar y regresar al resumen
+          </Button>
+        </div>
       </DashboardLayout>
     );
   }

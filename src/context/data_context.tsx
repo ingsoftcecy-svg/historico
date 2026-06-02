@@ -1,11 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect, useRef } from "react";
-import { BatchRecord } from "@/types";
+import { BatchRecord } from "@/data/mock_data";
 import { useIndexedDB } from "@/hooks/use_indexed_db"; 
-import { processDbfBuffer, mergeBatchRecords } from "@/utils/dbf_processor";
-import { useAuth } from "@/context/auth_context";
-import { useToast } from "@/hooks/use_toast";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { processDbfBuffer } from "@/utils/dbf_processor";
 
 interface DataContextType {
   data: BatchRecord[];          // Hot Block Data (Cocimientos)
@@ -20,8 +16,6 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [data, setData, isLoaded] = useIndexedDB<BatchRecord[]>("brew-insights-data-v8", []);
   const [coldData, setColdData, isColdLoaded] = useIndexedDB<BatchRecord[]>("brew-insights-cold-v1", []);
   
@@ -31,38 +25,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const hasStartedHotLoad = useRef(false);
   const hasStartedColdLoad = useRef(false);
 
-  const loadHistoryFromFirestore = async (target: 'hot' | 'cold') => {
-    if (!user) return;
-    try {
-      const collectionName = target === 'cold' ? 'cold_block_records' : 'hot_block_records';
-      const snapshot = await getDocs(collection(db, collectionName));
-      const firestoreRecords = snapshot.docs.map((doc) => doc.data() as BatchRecord);
-      if (firestoreRecords.length > 0) {
-        const mergedData = mergeBatchRecords([...(target === 'cold' ? coldData : data), ...firestoreRecords]);
-        if (target === 'cold') setColdData(mergedData);
-        else setData(mergedData);
-      } else {
-        if ((target === 'cold' ? coldData : data).length === 0) {
-          toast({
-            title: "No hay histórico en Firestore",
-            description: `Aún no se encontraron registros en la colección ${collectionName}.`,
-          });
-        }
-      }
-    } catch (error) {
-      console.error(`Error loading ${target} history from Firestore:`, error);
-    }
-  };
-
   const triggerHotBlockLoad = async () => {
-    if (hasStartedHotLoad.current) return;
+    if (data.length > 0 || hasStartedHotLoad.current) return;
     hasStartedHotLoad.current = true;
     setIsHotLoading(true);
     
     try {
-      // No intentamos cargar archivos DBF locales que no existen.
-      // Usamos solo el historial guardado en Firestore.
-      await loadHistoryFromFirestore('hot');
+      const hotFiles = [
+        "/Datos semanales/S2600018.DBF",
+        "/Datos semanales/S2600019.DBF",
+        "/Datos semanales/S2600020.DBF",
+        "/Datos semanales/S2600021.DBF"
+      ];
+      
+      let combinedHot: BatchRecord[] = [];
+      for (let i = 0; i < hotFiles.length; i++) {
+        setLoadingText(`Cargando Cocimientos (${i+1}/${hotFiles.length})...`);
+        const response = await fetch(hotFiles[i]);
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          const fileData = await processDbfBuffer(buffer);
+          if (fileData) combinedHot.push(...fileData);
+        }
+      }
+      if (combinedHot.length > 0) setData(combinedHot);
     } catch (error) {
       console.error("Error loading hot block data:", error);
     } finally {
@@ -80,8 +66,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setColdData([]);
       localStorage.setItem('cold_data_cleaned', 'true');
     }
-
-    await loadHistoryFromFirestore('cold');
   };
 
   // Automatización: Limpiar datos de prueba heredados (Semanas 6-9) si se detectan
